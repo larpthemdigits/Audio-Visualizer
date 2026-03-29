@@ -8,3 +8,30 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface Song {
+  id: number;
+  title: string;
+  artist: string;
+  soundcloudUrl: string;
+  createdAt: string;
+}
+
+export interface CreateSongInput {
+  title: string;
+  artist: string;
+  soundcloudUrl: string;
+}
+
+export interface AdminLoginInput {
+  password: string;
+}
+
+export interface SuccessResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface ErrorResponse {
+  error: string;
+}

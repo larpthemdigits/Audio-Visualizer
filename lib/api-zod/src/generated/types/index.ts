@@ -6,4 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./adminLoginInput";
+export * from "./createSongInput";
+export * from "./errorResponse";
 export * from "./healthStatus";
+export * from "./song";
+export * from "./successResponse";

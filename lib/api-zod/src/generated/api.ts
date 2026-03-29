@@ -8,9 +8,64 @@
 import * as zod from "zod";
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
+});
+
+/**
+ * @summary Get a random song
+ */
+export const GetRandomSongResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  artist: zod.string(),
+  soundcloudUrl: zod.string(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary List all songs (admin)
+ */
+export const ListSongsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  artist: zod.string(),
+  soundcloudUrl: zod.string(),
+  createdAt: zod.string(),
+});
+export const ListSongsResponse = zod.array(ListSongsResponseItem);
+
+/**
+ * @summary Add a new song (admin)
+ */
+export const AddSongBody = zod.object({
+  title: zod.string(),
+  artist: zod.string(),
+  soundcloudUrl: zod.string(),
+});
+
+/**
+ * @summary Delete a song (admin)
+ */
+export const DeleteSongParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteSongResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});
+
+/**
+ * @summary Verify admin password
+ */
+export const AdminLoginBody = zod.object({
+  password: zod.string(),
+});
+
+export const AdminLoginResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
 });

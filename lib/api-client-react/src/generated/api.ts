@@ -5,18 +5,28 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  AdminLoginInput,
+  CreateSongInput,
+  ErrorResponse,
+  HealthStatus,
+  Song,
+  SuccessResponse,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -25,7 +35,6 @@ type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const getHealthCheckUrl = () => {
@@ -99,3 +108,397 @@ export function useHealthCheck<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Get a random song
+ */
+export const getGetRandomSongUrl = () => {
+  return `/api/songs/random`;
+};
+
+export const getRandomSong = async (options?: RequestInit): Promise<Song> => {
+  return customFetch<Song>(getGetRandomSongUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetRandomSongQueryKey = () => {
+  return [`/api/songs/random`] as const;
+};
+
+export const getGetRandomSongQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRandomSong>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getRandomSong>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetRandomSongQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getRandomSong>>> = ({
+    signal,
+  }) => getRandomSong({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRandomSong>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRandomSongQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRandomSong>>
+>;
+export type GetRandomSongQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get a random song
+ */
+
+export function useGetRandomSong<
+  TData = Awaited<ReturnType<typeof getRandomSong>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getRandomSong>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRandomSongQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List all songs (admin)
+ */
+export const getListSongsUrl = () => {
+  return `/api/songs`;
+};
+
+export const listSongs = async (options?: RequestInit): Promise<Song[]> => {
+  return customFetch<Song[]>(getListSongsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListSongsQueryKey = () => {
+  return [`/api/songs`] as const;
+};
+
+export const getListSongsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSongs>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listSongs>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListSongsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listSongs>>> = ({
+    signal,
+  }) => listSongs({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSongs>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListSongsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSongs>>
+>;
+export type ListSongsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all songs (admin)
+ */
+
+export function useListSongs<
+  TData = Awaited<ReturnType<typeof listSongs>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listSongs>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListSongsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add a new song (admin)
+ */
+export const getAddSongUrl = () => {
+  return `/api/songs`;
+};
+
+export const addSong = async (
+  createSongInput: CreateSongInput,
+  options?: RequestInit,
+): Promise<Song> => {
+  return customFetch<Song>(getAddSongUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createSongInput),
+  });
+};
+
+export const getAddSongMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addSong>>,
+    TError,
+    { data: BodyType<CreateSongInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof addSong>>,
+  TError,
+  { data: BodyType<CreateSongInput> },
+  TContext
+> => {
+  const mutationKey = ["addSong"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof addSong>>,
+    { data: BodyType<CreateSongInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return addSong(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AddSongMutationResult = NonNullable<
+  Awaited<ReturnType<typeof addSong>>
+>;
+export type AddSongMutationBody = BodyType<CreateSongInput>;
+export type AddSongMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Add a new song (admin)
+ */
+export const useAddSong = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addSong>>,
+    TError,
+    { data: BodyType<CreateSongInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof addSong>>,
+  TError,
+  { data: BodyType<CreateSongInput> },
+  TContext
+> => {
+  return useMutation(getAddSongMutationOptions(options));
+};
+
+/**
+ * @summary Delete a song (admin)
+ */
+export const getDeleteSongUrl = (id: number) => {
+  return `/api/songs/${id}`;
+};
+
+export const deleteSong = async (
+  id: number,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getDeleteSongUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteSongMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSong>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteSong>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteSong"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteSong>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteSong(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteSongMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteSong>>
+>;
+
+export type DeleteSongMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Delete a song (admin)
+ */
+export const useDeleteSong = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSong>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteSong>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteSongMutationOptions(options));
+};
+
+/**
+ * @summary Verify admin password
+ */
+export const getAdminLoginUrl = () => {
+  return `/api/admin/login`;
+};
+
+export const adminLogin = async (
+  adminLoginInput: AdminLoginInput,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getAdminLoginUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(adminLoginInput),
+  });
+};
+
+export const getAdminLoginMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminLogin>>,
+    TError,
+    { data: BodyType<AdminLoginInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminLogin>>,
+  TError,
+  { data: BodyType<AdminLoginInput> },
+  TContext
+> => {
+  const mutationKey = ["adminLogin"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminLogin>>,
+    { data: BodyType<AdminLoginInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return adminLogin(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminLoginMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminLogin>>
+>;
+export type AdminLoginMutationBody = BodyType<AdminLoginInput>;
+export type AdminLoginMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Verify admin password
+ */
+export const useAdminLogin = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminLogin>>,
+    TError,
+    { data: BodyType<AdminLoginInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminLogin>>,
+  TError,
+  { data: BodyType<AdminLoginInput> },
+  TContext
+> => {
+  return useMutation(getAdminLoginMutationOptions(options));
+};

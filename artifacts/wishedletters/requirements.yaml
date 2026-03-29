@@ -1,0 +1,15 @@
+packages:
+  "framer-motion": "For smooth page transitions and micro-interactions"
+  "react-hook-form": "For robust admin form state management"
+  "@hookform/resolvers": "For integrating Zod validation with react-hook-form"
+  "clsx": "For conditional class name merging"
+  "tailwind-merge": "For merging tailwind classes without conflicts"
+
+images:
+  - path: "artifacts/wishedletters/public/images/profile.png"
+    description: "Moody, stylish anime-style portrait of a cool character, dark aesthetic with subtle purple lighting accents, minimal background"
+    aspect_ratio: "1:1"
+
+notes:
+  - "The SoundCloud Widget API script is loaded dynamically in the MusicPlayer component."
+  - "Admin authentication state is kept in memory for simplicity per the requirements."

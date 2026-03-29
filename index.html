@@ -388,6 +388,7 @@
     playBtn.disabled = false;
     hint.style.display = 'none';
     widget.setVolume(80);
+    widget.play();
 
     // Try to get artwork URL from the widget
     widget.getCurrentSound((sound) => {

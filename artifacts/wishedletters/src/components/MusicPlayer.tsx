@@ -43,10 +43,7 @@ export function MusicPlayer() {
     setPosition(0);
     setDuration(0);
     setArtworkUrl(null);
-    widgetRef.current.load(
-      `https://w.soundcloud.com/player/?url=${encodeURIComponent(song.soundcloudUrl)}&auto_play=true`,
-      { auto_play: true }
-    );
+    widgetRef.current.load(song.soundcloudUrl, { auto_play: true });
   };
 
   const goToNext = () => {

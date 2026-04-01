@@ -81,6 +81,7 @@ export function MusicPlayer() {
       });
 
       widget.bind(window.SC.Widget.Events.PLAY, () => {
+        setIsReady(true);
         setIsPlaying(true);
         widget.getCurrentSound((soundInfo: any) => {
           if (soundInfo?.artwork_url) {

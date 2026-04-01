@@ -1,0 +1,35 @@
+wishedletters@2a01-036d-0119-002a-0467-1821-faab-1d93:/var/www/wishedletters/artifacts/api-server$ sudo systemctl status nginx
+ss -tlnp | grep 3001
+curl -H "Host: wishedletters.hu" http://localhost/api/songs/random
+● nginx.service - The nginx HTTP and reverse proxy server
+     Loaded: loaded (/usr/lib/systemd/system/nginx.service; enabled; preset: disabled)
+    Drop-In: /usr/lib/systemd/system/service.d
+             └─10-timeout-abort.conf
+             /etc/systemd/system/nginx.service.d
+             └─php-fpm.conf
+     Active: active (running) since Wed 2026-04-01 19:27:40 CEST; 2min 23s ago
+ Invocation: 5b906f25fe7e4baba8953d279665d112
+    Process: 11218 ExecStartPre=/usr/bin/rm -f /run/nginx.pid (code=exited, status=0/SUCCESS)
+    Process: 11221 ExecStartPre=/usr/sbin/nginx -t (code=exited, status=0/SUCCESS)
+    Process: 11223 ExecStart=/usr/sbin/nginx (code=exited, status=0/SUCCESS)
+   Main PID: 11224 (nginx)
+      Tasks: 9 (limit: 8600)
+     Memory: 8.1M (peak: 9.1M)
+        CPU: 82ms
+     CGroup: /system.slice/nginx.service
+             ├─11224 "nginx: master process /usr/sbin/nginx"
+             ├─11225 "nginx: worker process"
+             ├─11226 "nginx: worker process"
+             ├─11227 "nginx: worker process"
+             ├─11228 "nginx: worker process"
+             ├─11230 "nginx: worker process"
+             ├─11231 "nginx: worker process"
+             ├─11232 "nginx: worker process"
+             └─11233 "nginx: worker process"
+
+Apr 01 19:27:39 2a01-036d-0119-002a-0467-1821-faab-1d93.pool6.digikabel.hu systemd[1]: Starting nginx.service - The nginx HTTP and reverse proxy server...
+Apr 01 19:27:40 2a01-036d-0119-002a-0467-1821-faab-1d93.pool6.digikabel.hu nginx[11221]: nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+Apr 01 19:27:40 2a01-036d-0119-002a-0467-1821-faab-1d93.pool6.digikabel.hu nginx[11221]: nginx: configuration file /etc/nginx/nginx.conf test is successful
+Apr 01 19:27:40 2a01-036d-0119-002a-0467-1821-faab-1d93.pool6.digikabel.hu systemd[1]: Started nginx.service - The nginx HTTP and reverse proxy server.
+LISTEN 0      511                *:3001             *:*                                          
+{"error":"No songs found"}wishedletters@2a01-036d-0119-002a-0467-1821-faab-1d93:/var/www/wishedletters/artifacts/api-server$ 

@@ -1,0 +1,27 @@
+wishedletters@2a01-036d-0119-002a-0467-1821-faab-1d93:/var/www/wishedletters/artifacts/api-server$ sudo systemctl status cloudflared
+sudo journalctl -u cloudflared -n 20
+[sudo] password for wishedletters: 
+● cloudflared.service - cloudflared
+     Loaded: loaded (/etc/systemd/system/cloudflared.service; enabled; preset: disabled)
+    Drop-In: /usr/lib/systemd/system/service.d
+             └─10-timeout-abort.conf
+     Active: active (running) since Wed 2026-04-01 19:05:57 CEST; 25min ago
+ Invocation: f020acdd37a845b4844f5f3630472a2c
+   Main PID: 1435 (cloudflared)
+      Tasks: 13 (limit: 8600)
+     Memory: 46.1M (peak: 62.7M)
+        CPU: 3.970s
+     CGroup: /system.slice/cloudflared.service
+             └─1435 /usr/bin/cloudflared --no-autoupdate --config /etc/cloudflared/config.yml tunnel run
+
+Apr 01 19:29:34 2a01-036d-0119-002a-0467-1821-faab-1d93.pool6.digikabel.hu cloudflared[1435]: 2026-04-01T17:29:34Z ERR  error="Unable to reach the origin service. The service may be down or it may not be respond>
+Apr 01 19:29:34 2a01-036d-0119-002a-0467-1821-faab-1d93.pool6.digikabel.hu cloudflared[1435]: 2026-04-01T17:29:34Z ERR Request failed error="Unable to reach the origin service. The service may be down or it may >
+Apr 01 19:29:52 2a01-036d-0119-002a-0467-1821-faab-1d93.pool6.digikabel.hu cloudflared[1435]: 2026-04-01T17:29:52Z ERR  error="Unable to reach the origin service. The service may be down or it may not be respond>
+Apr 01 19:29:52 2a01-036d-0119-002a-0467-1821-faab-1d93.pool6.digikabel.hu cloudflared[1435]: 2026-04-01T17:29:52Z ERR Request failed error="Unable to reach the origin service. The service may be down or it may >
+Apr 01 19:29:52 2a01-036d-0119-002a-0467-1821-faab-1d93.pool6.digikabel.hu cloudflared[1435]: 2026-04-01T17:29:52Z ERR  error="Unable to reach the origin service. The service may be down or it may not be respond>
+Apr 01 19:29:52 2a01-036d-0119-002a-0467-1821-faab-1d93.pool6.digikabel.hu cloudflared[1435]: 2026-04-01T17:29:52Z ERR Request failed error="Unable to reach the origin service. The service may be down or it may >
+Apr 01 19:29:52 2a01-036d-0119-002a-0467-1821-faab-1d93.pool6.digikabel.hu cloudflared[1435]: 2026-04-01T17:29:52Z ERR  error="Unable to reach the origin service. The service may be down or it may not be respond>
+Apr 01 19:29:52 2a01-036d-0119-002a-0467-1821-faab-1d93.pool6.digikabel.hu cloudflared[1435]: 2026-04-01T17:29:52Z ERR Request failed error="Unable to reach the origin service. The service may be down or it may >
+Apr 01 19:29:52 2a01-036d-0119-002a-0467-1821-faab-1d93.pool6.digikabel.hu cloudflared[1435]: 2026-04-01T17:29:52Z ERR  error="Unable to reach the origin service. The service may be down or it may not be respond>
+Apr 01 19:29:52 2a01-036d-0119-002a-0467-1821-faab-1d93.pool6.digikabel.hu cloudflared[1435]: 2026-04-01T17:29:52Z ERR Request failed error="Unable to reach the origin service. The service may be down or it may >
+lines 1-23/23 (END)

@@ -1,0 +1,38 @@
+wishedletters@2a01-036d-0119-002a-0467-1821-faab-1d93:/var/www/wishedletters$ getenforce
+sudo ausearch -m avc -ts recent 2>/dev/null | tail -20
+Enforcing
+time->Wed Apr  1 19:11:03 2026
+type=AVC msg=audit(1775063463.795:550): avc:  denied  { read } for  pid=1 comm="systemd" name=".env" dev="nvme0n1p3" ino=1145873 scontext=system_u:system_r:init_t:s0 tcontext=unconfined_u:object_r:httpd_sys_content_t:s0 tclass=file permissive=0
+----
+time->Wed Apr  1 19:11:09 2026
+type=AVC msg=audit(1775063469.045:554): avc:  denied  { read } for  pid=1 comm="systemd" name=".env" dev="nvme0n1p3" ino=1145873 scontext=system_u:system_r:init_t:s0 tcontext=unconfined_u:object_r:httpd_sys_content_t:s0 tclass=file permissive=0
+----
+time->Wed Apr  1 19:11:14 2026
+type=AVC msg=audit(1775063474.294:556): avc:  denied  { read } for  pid=1 comm="systemd" name=".env" dev="nvme0n1p3" ino=1145873 scontext=system_u:system_r:init_t:s0 tcontext=unconfined_u:object_r:httpd_sys_content_t:s0 tclass=file permissive=0
+----
+time->Wed Apr  1 19:11:19 2026
+type=AVC msg=audit(1775063479.545:558): avc:  denied  { read } for  pid=1 comm="systemd" name=".env" dev="nvme0n1p3" ino=1145873 scontext=system_u:system_r:init_t:s0 tcontext=unconfined_u:object_r:httpd_sys_content_t:s0 tclass=file permissive=0
+----
+time->Wed Apr  1 19:11:24 2026
+type=AVC msg=audit(1775063484.793:560): avc:  denied  { read } for  pid=1 comm="systemd" name=".env" dev="nvme0n1p3" ino=1145873 scontext=system_u:system_r:init_t:s0 tcontext=unconfined_u:object_r:httpd_sys_content_t:s0 tclass=file permissive=0
+----
+time->Wed Apr  1 19:11:30 2026
+type=AVC msg=audit(1775063490.044:562): avc:  denied  { read } for  pid=1 comm="systemd" name=".env" dev="nvme0n1p3" ino=1145873 scontext=system_u:system_r:init_t:s0 tcontext=unconfined_u:object_r:httpd_sys_content_t:s0 tclass=file permissive=0
+----
+time->Wed Apr  1 19:11:35 2026
+type=AVC msg=audit(1775063495.294:564): avc:  denied  { read } for  pid=1 comm="systemd" name=".env" dev="nvme0n1p3" ino=1145873 scontext=system_u:system_r:init_t:s0 tcontext=unconfined_u:object_r:httpd_sys_content_t:s0 tclass=file permissive=0
+wishedletters@2a01-036d-0119-002a-0467-1821-faab-1d93:/var/www/wishedletters$ ls -la /var/www/wishedletters/artifacts/api-server/dist/index.mjs
+-rw-r--r--. 1 wishedletters wishedletters 2248667 Mar 29 14:08 /var/www/wishedletters/artifacts/api-server/dist/index.mjs
+wishedletters@2a01-036d-0119-002a-0467-1821-faab-1d93:/var/www/wishedletters$ cd /var/www/wishedletters/artifacts/api-server && PORT=3001 /usr/bin/node --enable-source-maps dist/index.mjs
+/var/www/wishedletters/lib/db/src/index.ts:8
+  throw new Error(
+        ^
+
+Error: DATABASE_URL must be set. Did you forget to provision a database?
+    at <anonymous> (/var/www/wishedletters/lib/db/src/index.ts:8:9)
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+
+Node.js v22.22.0
+wishedletters@2a01-036d-0119-002a-0467-1821-faab-1d93:/var/www/wishedletters/artifacts/api-server$ 

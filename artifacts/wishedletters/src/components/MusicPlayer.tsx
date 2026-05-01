@@ -210,9 +210,9 @@ export function MusicPlayer() {
             </button>
           </div>
 
-          {!widgetReady && (
-            <p className="text-[0.7rem] text-[#d8b4fe]/50 text-center italic animate-blink mt-1">connecting player...</p>
-          )}
+          <p className="text-[0.55rem] text-[#d8b4fe]/40 text-center font-mono mt-1 select-none">
+            sc:{scriptStatus} | ready:{String(widgetReady)} | playing:{String(isPlaying)} | idx:{currentIndex}/{shuffled.length}
+          </p>
         </>
       )}
     </div>

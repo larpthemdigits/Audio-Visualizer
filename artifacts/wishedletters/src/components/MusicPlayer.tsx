@@ -133,13 +133,22 @@ export function MusicPlayer() {
   const progressPct = duration > 0 ? (position / duration) * 100 : 0;
 
   return (
-    <div className="w-full bg-white/5 border border-primary/25 rounded-2xl p-4 md:p-5 backdrop-blur-md mt-2 flex flex-col gap-3.5 relative overflow-hidden">
+    <div className="w-full bg-white/5 border border-primary/25 rounded-2xl p-4 md:p-5 backdrop-blur-md mt-2 flex flex-col gap-3.5 relative">
 
-      {/* Hidden SC iframe — always uses shuffled[0] as initial src, widget.load() changes tracks */}
+      {/* SC iframe — kept in viewport so iOS doesn't throttle it, but visually hidden */}
       <iframe
         ref={iframeRef}
         src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(shuffled[0].soundcloudUrl)}&color=%23000000&auto_play=true&hide_related=false&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true`}
-        style={{ position: "absolute", left: "-9999px", width: "1px", height: "1px" }}
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          width: "300px",
+          height: "166px",
+          opacity: 0,
+          pointerEvents: "none",
+          zIndex: -1,
+        }}
         allow="autoplay"
         title="SoundCloud player"
       />
@@ -211,8 +220,8 @@ export function MusicPlayer() {
       </div>
 
       {/* Debug line — DELETE after issue is confirmed fixed */}
-      <p className="text-[0.65rem] text-white/60 text-center font-mono bg-black/30 rounded px-1 py-0.5">
-        sc:{scriptStatus} | rdy:{String(widgetReady)} | ▶:{String(isPlaying)} | {currentIndex+1}/{shuffled.length}
+      <p className="text-xs text-yellow-300 text-center font-mono bg-black/60 rounded px-2 py-1 border border-yellow-500/40">
+        sc:{scriptStatus} | rdy:{String(widgetReady)} | play:{String(isPlaying)} | {currentIndex+1}/{shuffled.length}
       </p>
     </div>
   );

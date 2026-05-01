@@ -47,11 +47,9 @@ export function MusicPlayer() {
   const loadSong = (index: number, songList: any[]) => {
     const song = songList[index];
     if (!song || !widgetRef.current) return;
-    setIsReady(false);
     setPosition(0);
     setDuration(0);
     setArtworkUrl(null);
-    armReadyFallback();
     widgetRef.current.load(song.soundcloudUrl, { auto_play: true });
   };
 

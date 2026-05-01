@@ -10,102 +10,118 @@ declare global {
   }
 }
 
+type Song = {
+  id: number;
+  title: string;
+  artist: string;
+  soundcloudUrl: string;
+  sortOrder: number;
+};
+
+function buildSrc(url: string) {
+  return `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&color=%23000000&auto_play=true&hide_related=false&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true`;
+}
+
 export function MusicPlayer() {
   const { data: songs, isLoading, error } = useListSongs();
   const scriptStatus = useScript("https://w.soundcloud.com/player/api.js");
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const widgetRef = useRef<any>(null);
-  const initializedRef = useRef(false);
-  // Use a ref to always have the latest index inside SC event callbacks
   const indexRef = useRef(0);
+  const shuffledRef = useRef<Song[]>([]);
 
-  const [shuffled, setShuffled] = useState<any[]>([]);
+  const [shuffled, setShuffled] = useState<Song[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [iframeSrc, setIframeSrc] = useState("");
+  // Changing this key forces the iframe to fully remount — fresh autoplay grant on iOS
+  const [iframeKey, setIframeKey] = useState(0);
+
   const [widgetReady, setWidgetReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
   const [artworkUrl, setArtworkUrl] = useState<string | null>(null);
 
-  // Shuffle songs once on load
+  // Shuffle once on first load
   useEffect(() => {
-    if (songs && songs.length > 0 && shuffled.length === 0) {
-      setShuffled([...songs].sort(() => Math.random() - 0.5));
-    }
+    if (!songs || songs.length === 0 || shuffled.length > 0) return;
+    const copy = [...songs].sort(() => Math.random() - 0.5) as Song[];
+    shuffledRef.current = copy;
+    setShuffled(copy);
+    setIframeSrc(buildSrc(copy[0].soundcloudUrl));
   }, [songs, shuffled.length]);
 
-  // Keep indexRef in sync with currentIndex state
+  // Re-bind SC widget whenever the iframe remounts (iframeKey changes)
   useEffect(() => {
-    indexRef.current = currentIndex;
-  }, [currentIndex]);
+    if (scriptStatus !== "ready" || !iframeSrc || !iframeRef.current) return;
 
-  // Initialize SC Widget once we have the script + first song
-  useEffect(() => {
-    if (
-      scriptStatus !== "ready" ||
-      shuffled.length === 0 ||
-      !iframeRef.current ||
-      initializedRef.current
-    ) return;
-
-    const widget = window.SC.Widget(iframeRef.current);
+    const iframe = iframeRef.current;
+    const widget = window.SC.Widget(iframe);
     widgetRef.current = widget;
-    initializedRef.current = true;
 
-    widget.bind(window.SC.Widget.Events.READY, () => {
+    const onReady = () => {
       setWidgetReady(true);
       widget.setVolume(80);
       widget.play();
       widget.getCurrentSound((s: any) => {
-        if (s?.artwork_url) setArtworkUrl(s.artwork_url.replace("-large", "-t200x200"));
+        if (s?.artwork_url) {
+          setArtworkUrl(s.artwork_url.replace("-large", "-t200x200"));
+        }
       });
-    });
+    };
 
-    widget.bind(window.SC.Widget.Events.PLAY, () => {
+    const onPlay = () => {
       setWidgetReady(true);
       setIsPlaying(true);
       widget.getCurrentSound((s: any) => {
-        if (s?.artwork_url) setArtworkUrl(s.artwork_url.replace("-large", "-t200x200"));
+        if (s?.artwork_url) {
+          setArtworkUrl(s.artwork_url.replace("-large", "-t200x200"));
+        }
       });
-    });
+    };
 
-    widget.bind(window.SC.Widget.Events.PAUSE, () => setIsPlaying(false));
+    const onPause = () => setIsPlaying(false);
 
-    widget.bind(window.SC.Widget.Events.FINISH, () => {
+    const onFinish = () => {
       setIsPlaying(false);
       setPosition(0);
-      // Use the ref so we always get the latest index, not a stale closure value
-      setShuffled((prev) => {
-        const next = (indexRef.current + 1) % prev.length;
-        setCurrentIndex(next);
-        indexRef.current = next;
-        widget.load(prev[next].soundcloudUrl, { auto_play: true });
-        return prev;
-      });
-    });
+      const nextIdx = (indexRef.current + 1) % shuffledRef.current.length;
+      switchToIndex(nextIdx);
+    };
 
-    widget.bind(window.SC.Widget.Events.PLAY_PROGRESS, (e: any) => {
+    const onProgress = (e: any) => {
       setPosition(e.currentPosition);
       if (e.relativePosition > 0) {
         setDuration(e.currentPosition / e.relativePosition);
       }
-    });
-  }, [scriptStatus, shuffled]);
+    };
 
-  const goToIndex = (next: number) => {
-    if (!widgetRef.current || shuffled.length < 2) return;
-    setCurrentIndex(next);
-    indexRef.current = next;
+    widget.bind(window.SC.Widget.Events.READY, onReady);
+    widget.bind(window.SC.Widget.Events.PLAY, onPlay);
+    widget.bind(window.SC.Widget.Events.PAUSE, onPause);
+    widget.bind(window.SC.Widget.Events.FINISH, onFinish);
+    widget.bind(window.SC.Widget.Events.PLAY_PROGRESS, onProgress);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scriptStatus, iframeKey, iframeSrc]);
+
+  const switchToIndex = (idx: number) => {
+    const song = shuffledRef.current[idx];
+    if (!song) return;
+    indexRef.current = idx;
+    setCurrentIndex(idx);
+    setWidgetReady(false);
+    setIsPlaying(false);
     setPosition(0);
     setDuration(0);
     setArtworkUrl(null);
-    setIsPlaying(false);
-    widgetRef.current.load(shuffled[next].soundcloudUrl, { auto_play: true });
+    setIframeSrc(buildSrc(song.soundcloudUrl));
+    setIframeKey((k) => k + 1); // remount iframe → fresh READY + autoplay
   };
 
-  const goToNext = () => goToIndex((currentIndex + 1) % shuffled.length);
-  const goToPrev = () => goToIndex((currentIndex - 1 + shuffled.length) % shuffled.length);
+  const goToNext = () => switchToIndex((indexRef.current + 1) % shuffledRef.current.length);
+  const goToPrev = () => switchToIndex((indexRef.current - 1 + shuffledRef.current.length) % shuffledRef.current.length);
 
   const togglePlay = () => {
     if (!widgetRef.current || !widgetReady) return;
@@ -121,7 +137,7 @@ export function MusicPlayer() {
 
   if (isLoading) {
     return (
-      <div className="w-full bg-white/5 border border-primary/25 rounded-2xl p-4 md:p-5 backdrop-blur-md mt-2 flex flex-col gap-3.5 items-center justify-center min-h-[160px]">
+      <div className="w-full bg-white/5 border border-primary/25 rounded-2xl p-4 md:p-5 backdrop-blur-md mt-2 flex items-center justify-center min-h-[160px]">
         <p className="text-xs text-[#d8b4fe]/50 italic animate-blink">loading music...</p>
       </div>
     );
@@ -135,29 +151,41 @@ export function MusicPlayer() {
   return (
     <div className="w-full bg-white/5 border border-primary/25 rounded-2xl p-4 md:p-5 backdrop-blur-md mt-2 flex flex-col gap-3.5 relative">
 
-      {/* SC iframe — kept in viewport so iOS doesn't throttle it, but visually hidden */}
-      <iframe
-        ref={iframeRef}
-        src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(shuffled[0].soundcloudUrl)}&color=%23000000&auto_play=true&hide_related=false&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true`}
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          width: "300px",
-          height: "166px",
-          opacity: 0,
-          pointerEvents: "none",
-          zIndex: -1,
-        }}
-        allow="autoplay"
-        title="SoundCloud player"
-      />
+      {/*
+        iframe is fixed at bottom-left corner, invisible (opacity:0).
+        It must stay in-viewport — iOS Safari throttles/ignores off-screen iframes.
+        iframeKey forces a full remount on song change → fresh autoplay permission.
+      */}
+      {iframeSrc && (
+        <iframe
+          key={iframeKey}
+          ref={iframeRef}
+          src={iframeSrc}
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            width: "300px",
+            height: "166px",
+            opacity: 0,
+            pointerEvents: "none",
+            zIndex: -1,
+          }}
+          allow="autoplay"
+          title="SoundCloud player"
+        />
+      )}
 
       {/* Album art + song info */}
       <div className="flex items-center gap-3.5">
         <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-[#1a1a2e] to-[#2d1b69] flex-shrink-0 overflow-hidden flex items-center justify-center">
           {artworkUrl ? (
-            <img src={artworkUrl} alt="Album art" className="w-full h-full object-cover" onError={() => setArtworkUrl(null)} />
+            <img
+              src={artworkUrl}
+              alt="Album art"
+              className="w-full h-full object-cover"
+              onError={() => setArtworkUrl(null)}
+            />
           ) : (
             <Music className="w-6 h-6 text-primary/40" />
           )}
@@ -174,7 +202,9 @@ export function MusicPlayer() {
 
       {/* Progress bar */}
       <div className="flex items-center gap-2">
-        <span className="text-[0.65rem] text-[#d8b4fe]/50 flex-shrink-0 min-w-[28px] tabular-nums">{formatTime(position)}</span>
+        <span className="text-[0.65rem] text-[#d8b4fe]/50 flex-shrink-0 min-w-[28px] tabular-nums">
+          {formatTime(position)}
+        </span>
         <input
           type="range"
           min="0"
@@ -186,7 +216,9 @@ export function MusicPlayer() {
           style={{ "--seek-pct": `${progressPct}%` } as React.CSSProperties}
           aria-label="Seek"
         />
-        <span className="text-[0.65rem] text-[#d8b4fe]/50 flex-shrink-0 min-w-[28px] tabular-nums text-right">{formatTime(duration)}</span>
+        <span className="text-[0.65rem] text-[#d8b4fe]/50 flex-shrink-0 min-w-[28px] tabular-nums text-right">
+          {formatTime(duration)}
+        </span>
       </div>
 
       {/* Controls */}
@@ -206,7 +238,13 @@ export function MusicPlayer() {
           className="w-[52px] h-[52px] rounded-full bg-gradient-to-br from-[#9333ea] to-[#a855f7] flex items-center justify-center text-white flex-shrink-0 transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(147,51,234,0.6),0_0_40px_rgba(168,85,247,0.25)] hover:shadow-[0_0_30px_rgba(147,51,234,0.9),0_0_60px_rgba(168,85,247,0.4)]"
           aria-label={isPlaying ? "Pause" : "Play"}
         >
-          {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-1" />}
+          {!widgetReady ? (
+            <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+          ) : isPlaying ? (
+            <Pause className="w-5 h-5 fill-current" />
+          ) : (
+            <Play className="w-5 h-5 fill-current ml-1" />
+          )}
         </button>
 
         <button
@@ -219,10 +257,12 @@ export function MusicPlayer() {
         </button>
       </div>
 
-      {/* Debug line — DELETE after issue is confirmed fixed */}
-      <p className="text-xs text-yellow-300 text-center font-mono bg-black/60 rounded px-2 py-1 border border-yellow-500/40">
-        sc:{scriptStatus} | rdy:{String(widgetReady)} | play:{String(isPlaying)} | {currentIndex+1}/{shuffled.length}
-      </p>
+      {/* Connecting indicator */}
+      {!widgetReady && (
+        <p className="text-[0.7rem] text-[#d8b4fe]/50 text-center italic animate-blink">
+          connecting player...
+        </p>
+      )}
     </div>
   );
 }

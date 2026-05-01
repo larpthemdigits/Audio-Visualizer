@@ -17,6 +17,7 @@ export function MusicPlayer() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const widgetRef = useRef<any>(null);
   const initializedRef = useRef(false);
+  const readyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [shuffled, setShuffled] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -36,6 +37,13 @@ export function MusicPlayer() {
 
   const currentSong = shuffled[currentIndex];
 
+  const armReadyFallback = () => {
+    if (readyTimerRef.current) clearTimeout(readyTimerRef.current);
+    readyTimerRef.current = setTimeout(() => {
+      setIsReady(true);
+    }, 3000);
+  };
+
   const loadSong = (index: number, songList: any[]) => {
     const song = songList[index];
     if (!song || !widgetRef.current) return;
@@ -43,6 +51,7 @@ export function MusicPlayer() {
     setPosition(0);
     setDuration(0);
     setArtworkUrl(null);
+    armReadyFallback();
     widgetRef.current.load(song.soundcloudUrl, { auto_play: true });
   };
 
@@ -67,6 +76,7 @@ export function MusicPlayer() {
       initializedRef.current = true;
 
       widget.bind(window.SC.Widget.Events.READY, () => {
+        if (readyTimerRef.current) clearTimeout(readyTimerRef.current);
         setIsReady(true);
         widget.setVolume(80);
         widget.play();
@@ -78,6 +88,7 @@ export function MusicPlayer() {
       });
 
       widget.bind(window.SC.Widget.Events.PLAY, () => {
+        if (readyTimerRef.current) clearTimeout(readyTimerRef.current);
         setIsReady(true);
         setIsPlaying(true);
         widget.getCurrentSound((soundInfo: any) => {
@@ -109,6 +120,10 @@ export function MusicPlayer() {
     } catch (err) {
       console.error("Error initializing SoundCloud widget:", err);
     }
+
+    return () => {
+      if (readyTimerRef.current) clearTimeout(readyTimerRef.current);
+    };
   }, [scriptStatus, currentSong]);
 
   const togglePlay = () => {

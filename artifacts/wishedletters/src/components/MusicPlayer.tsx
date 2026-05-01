@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useScript } from "@/hooks/use-script";
-import { formatTime } from "@/lib/utils";
-import { Play, Pause, SkipBack, SkipForward, Music } from "lucide-react";
+import { SkipBack, SkipForward, Music } from "lucide-react";
 import { useListSongs } from "@workspace/api-client-react";
 
 declare global {
@@ -19,7 +18,26 @@ type Song = {
 };
 
 function buildSrc(url: string) {
-  return `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&color=%23000000&auto_play=true&hide_related=false&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true`;
+  // Handle both raw track URLs and embed URLs
+  let trackUrl = url;
+  if (url.includes("w.soundcloud.com/player")) {
+    try {
+      const params = new URLSearchParams(url.split("?")[1]);
+      trackUrl = decodeURIComponent(params.get("url") ?? url);
+    } catch {}
+  }
+  return (
+    "https://w.soundcloud.com/player/" +
+    `?url=${encodeURIComponent(trackUrl)}` +
+    `&color=%239333ea` +
+    `&auto_play=true` +
+    `&hide_related=true` +
+    `&show_comments=false` +
+    `&show_user=false` +
+    `&show_reposts=false` +
+    `&show_teaser=false` +
+    `&visual=false`
+  );
 }
 
 export function MusicPlayer() {
@@ -34,16 +52,11 @@ export function MusicPlayer() {
   const [shuffled, setShuffled] = useState<Song[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [iframeSrc, setIframeSrc] = useState("");
-  // Changing this key forces the iframe to fully remount — fresh autoplay grant on iOS
   const [iframeKey, setIframeKey] = useState(0);
-
-  const [widgetReady, setWidgetReady] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [position, setPosition] = useState(0);
-  const [duration, setDuration] = useState(0);
   const [artworkUrl, setArtworkUrl] = useState<string | null>(null);
+  const [widgetReady, setWidgetReady] = useState(false);
 
-  // Shuffle once on first load
+  // Shuffle once on load
   useEffect(() => {
     if (!songs || songs.length === 0 || shuffled.length > 0) return;
     const copy = [...songs].sort(() => Math.random() - 0.5) as Song[];
@@ -52,18 +65,16 @@ export function MusicPlayer() {
     setIframeSrc(buildSrc(copy[0].soundcloudUrl));
   }, [songs, shuffled.length]);
 
-  // Re-bind SC widget whenever the iframe remounts (iframeKey changes)
+  // Re-bind SC widget after each iframe remount
   useEffect(() => {
     if (scriptStatus !== "ready" || !iframeSrc || !iframeRef.current) return;
 
-    const iframe = iframeRef.current;
-    const widget = window.SC.Widget(iframe);
+    const widget = window.SC.Widget(iframeRef.current);
     widgetRef.current = widget;
 
     const onReady = () => {
       setWidgetReady(true);
       widget.setVolume(80);
-      widget.play();
       widget.getCurrentSound((s: any) => {
         if (s?.artwork_url) {
           setArtworkUrl(s.artwork_url.replace("-large", "-t200x200"));
@@ -73,7 +84,6 @@ export function MusicPlayer() {
 
     const onPlay = () => {
       setWidgetReady(true);
-      setIsPlaying(true);
       widget.getCurrentSound((s: any) => {
         if (s?.artwork_url) {
           setArtworkUrl(s.artwork_url.replace("-large", "-t200x200"));
@@ -81,64 +91,43 @@ export function MusicPlayer() {
       });
     };
 
-    const onPause = () => setIsPlaying(false);
-
     const onFinish = () => {
-      setIsPlaying(false);
-      setPosition(0);
-      const nextIdx = (indexRef.current + 1) % shuffledRef.current.length;
-      switchToIndex(nextIdx);
-    };
-
-    const onProgress = (e: any) => {
-      setPosition(e.currentPosition);
-      if (e.relativePosition > 0) {
-        setDuration(e.currentPosition / e.relativePosition);
-      }
+      const next = (indexRef.current + 1) % shuffledRef.current.length;
+      switchToIndex(next);
     };
 
     widget.bind(window.SC.Widget.Events.READY, onReady);
     widget.bind(window.SC.Widget.Events.PLAY, onPlay);
-    widget.bind(window.SC.Widget.Events.PAUSE, onPause);
     widget.bind(window.SC.Widget.Events.FINISH, onFinish);
-    widget.bind(window.SC.Widget.Events.PLAY_PROGRESS, onProgress);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scriptStatus, iframeKey, iframeSrc]);
+  }, [scriptStatus, iframeKey]);
 
   const switchToIndex = (idx: number) => {
     const song = shuffledRef.current[idx];
     if (!song) return;
     indexRef.current = idx;
     setCurrentIndex(idx);
-    setWidgetReady(false);
-    setIsPlaying(false);
-    setPosition(0);
-    setDuration(0);
     setArtworkUrl(null);
+    setWidgetReady(false);
     setIframeSrc(buildSrc(song.soundcloudUrl));
-    setIframeKey((k) => k + 1); // remount iframe → fresh READY + autoplay
+    setIframeKey((k) => k + 1);
   };
 
-  const goToNext = () => switchToIndex((indexRef.current + 1) % shuffledRef.current.length);
-  const goToPrev = () => switchToIndex((indexRef.current - 1 + shuffledRef.current.length) % shuffledRef.current.length);
-
-  const togglePlay = () => {
-    if (!widgetRef.current || !widgetReady) return;
-    isPlaying ? widgetRef.current.pause() : widgetRef.current.play();
-  };
-
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!widgetRef.current || !widgetReady) return;
-    const newPos = Number(e.target.value);
-    widgetRef.current.seekTo(newPos);
-    setPosition(newPos);
-  };
+  const goToNext = () =>
+    switchToIndex((indexRef.current + 1) % shuffledRef.current.length);
+  const goToPrev = () =>
+    switchToIndex(
+      (indexRef.current - 1 + shuffledRef.current.length) %
+        shuffledRef.current.length
+    );
 
   if (isLoading) {
     return (
-      <div className="w-full bg-white/5 border border-primary/25 rounded-2xl p-4 md:p-5 backdrop-blur-md mt-2 flex items-center justify-center min-h-[160px]">
-        <p className="text-xs text-[#d8b4fe]/50 italic animate-blink">loading music...</p>
+      <div className="w-full bg-white/5 border border-primary/25 rounded-2xl p-4 md:p-5 backdrop-blur-md mt-2 flex items-center justify-center min-h-[100px]">
+        <p className="text-xs text-[#d8b4fe]/50 italic animate-blink">
+          loading music...
+        </p>
       </div>
     );
   }
@@ -146,39 +135,13 @@ export function MusicPlayer() {
   if (error || shuffled.length === 0) return null;
 
   const currentSong = shuffled[currentIndex];
-  const progressPct = duration > 0 ? (position / duration) * 100 : 0;
 
   return (
-    <div className="w-full bg-white/5 border border-primary/25 rounded-2xl p-4 md:p-5 backdrop-blur-md mt-2 flex flex-col gap-3.5 relative">
-
-      {/*
-        iframe is fixed at bottom-left corner, invisible (opacity:0).
-        It must stay in-viewport — iOS Safari throttles/ignores off-screen iframes.
-        iframeKey forces a full remount on song change → fresh autoplay permission.
-      */}
-      {iframeSrc && (
-        <iframe
-          key={iframeKey}
-          ref={iframeRef}
-          src={iframeSrc}
-          style={{
-            position: "fixed",
-            bottom: 0,
-            left: 0,
-            width: "300px",
-            height: "166px",
-            opacity: 0,
-            pointerEvents: "none",
-            zIndex: -1,
-          }}
-          allow="autoplay"
-          title="SoundCloud player"
-        />
-      )}
-
-      {/* Album art + song info */}
-      <div className="flex items-center gap-3.5">
-        <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-[#1a1a2e] to-[#2d1b69] flex-shrink-0 overflow-hidden flex items-center justify-center">
+    <div className="w-full bg-white/5 border border-primary/25 rounded-2xl backdrop-blur-md mt-2 overflow-hidden">
+      {/* Top section: artwork + title + controls */}
+      <div className="flex items-center gap-3.5 p-4 pb-3">
+        {/* Artwork */}
+        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-[#1a1a2e] to-[#2d1b69] flex-shrink-0 overflow-hidden flex items-center justify-center">
           {artworkUrl ? (
             <img
               src={artworkUrl}
@@ -187,10 +150,12 @@ export function MusicPlayer() {
               onError={() => setArtworkUrl(null)}
             />
           ) : (
-            <Music className="w-6 h-6 text-primary/40" />
+            <Music className="w-5 h-5 text-primary/40" />
           )}
         </div>
-        <div className="flex flex-col gap-1 min-w-0">
+
+        {/* Title / artist */}
+        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
           <span className="text-sm font-semibold text-slate-200 whitespace-nowrap overflow-hidden text-ellipsis">
             {currentSong.title}
           </span>
@@ -198,70 +163,48 @@ export function MusicPlayer() {
             {currentSong.artist}
           </span>
         </div>
+
+        {/* Prev / Next */}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <button
+            onClick={goToPrev}
+            disabled={shuffled.length < 2}
+            className="text-[#d8b4fe]/70 hover:text-white transition-all duration-200 active:scale-90 disabled:opacity-30 disabled:pointer-events-none p-1"
+            aria-label="Previous song"
+          >
+            <SkipBack className="w-5 h-5 fill-current" />
+          </button>
+          <button
+            onClick={goToNext}
+            disabled={shuffled.length < 2}
+            className="text-[#d8b4fe]/70 hover:text-white transition-all duration-200 active:scale-90 disabled:opacity-30 disabled:pointer-events-none p-1"
+            aria-label="Next song"
+          >
+            <SkipForward className="w-5 h-5 fill-current" />
+          </button>
+        </div>
       </div>
 
-      {/* Progress bar */}
-      <div className="flex items-center gap-2">
-        <span className="text-[0.65rem] text-[#d8b4fe]/50 flex-shrink-0 min-w-[28px] tabular-nums">
-          {formatTime(position)}
-        </span>
-        <input
-          type="range"
-          min="0"
-          max={duration || 100}
-          value={position}
-          onChange={handleSeek}
-          disabled={!widgetReady}
-          className="player-seek"
-          style={{ "--seek-pct": `${progressPct}%` } as React.CSSProperties}
-          aria-label="Seek"
+      {/*
+        The SoundCloud iframe is VISIBLE here — this is intentional.
+        Hidden/off-screen iframes are throttled or blocked by iOS Safari,
+        which prevents the READY event from firing and audio from playing.
+        The iframe renders as a thin native SC player strip at the bottom
+        of the card. It handles its own play/pause/progress controls.
+      */}
+      {iframeSrc && (
+        <iframe
+          key={iframeKey}
+          ref={iframeRef}
+          src={iframeSrc}
+          width="100%"
+          height="80"
+          scrolling="no"
+          frameBorder="no"
+          allow="autoplay"
+          title="SoundCloud player"
+          style={{ display: "block" }}
         />
-        <span className="text-[0.65rem] text-[#d8b4fe]/50 flex-shrink-0 min-w-[28px] tabular-nums text-right">
-          {formatTime(duration)}
-        </span>
-      </div>
-
-      {/* Controls */}
-      <div className="flex items-center justify-center gap-6">
-        <button
-          onClick={goToPrev}
-          disabled={shuffled.length < 2}
-          className="text-[#d8b4fe]/70 hover:text-white transition-all duration-200 hover:scale-110 active:scale-95 disabled:opacity-30 disabled:pointer-events-none p-1"
-          aria-label="Previous song"
-        >
-          <SkipBack className="w-5 h-5 fill-current" />
-        </button>
-
-        <button
-          onClick={togglePlay}
-          disabled={!widgetReady}
-          className="w-[52px] h-[52px] rounded-full bg-gradient-to-br from-[#9333ea] to-[#a855f7] flex items-center justify-center text-white flex-shrink-0 transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(147,51,234,0.6),0_0_40px_rgba(168,85,247,0.25)] hover:shadow-[0_0_30px_rgba(147,51,234,0.9),0_0_60px_rgba(168,85,247,0.4)]"
-          aria-label={isPlaying ? "Pause" : "Play"}
-        >
-          {!widgetReady ? (
-            <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-          ) : isPlaying ? (
-            <Pause className="w-5 h-5 fill-current" />
-          ) : (
-            <Play className="w-5 h-5 fill-current ml-1" />
-          )}
-        </button>
-
-        <button
-          onClick={goToNext}
-          disabled={shuffled.length < 2}
-          className="text-[#d8b4fe]/70 hover:text-white transition-all duration-200 hover:scale-110 active:scale-95 disabled:opacity-30 disabled:pointer-events-none p-1"
-          aria-label="Next song"
-        >
-          <SkipForward className="w-5 h-5 fill-current" />
-        </button>
-      </div>
-
-      {/* Connecting indicator */}
-      {!widgetReady && (
-        <p className="text-[0.7rem] text-[#d8b4fe]/50 text-center italic animate-blink">
-          connecting player...
-        </p>
       )}
     </div>
   );

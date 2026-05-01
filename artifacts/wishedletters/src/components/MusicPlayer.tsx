@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useScript } from "@/hooks/use-script";
 import { formatTime } from "@/lib/utils";
 import { Play, Pause, SkipBack, SkipForward, Music } from "lucide-react";
@@ -17,11 +17,12 @@ export function MusicPlayer() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const widgetRef = useRef<any>(null);
   const initializedRef = useRef(false);
-  const readyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentIndexRef = useRef(0);
+  const shuffledRef = useRef<any[]>([]);
 
   const [shuffled, setShuffled] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isReady, setIsReady] = useState(false);
+  const [widgetReady, setWidgetReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -30,107 +31,92 @@ export function MusicPlayer() {
   useEffect(() => {
     if (songs && songs.length > 0 && shuffled.length === 0) {
       const copy = [...songs].sort(() => Math.random() - 0.5);
+      shuffledRef.current = copy;
       setShuffled(copy);
       setCurrentIndex(0);
+      currentIndexRef.current = 0;
     }
   }, [songs]);
 
   const currentSong = shuffled[currentIndex];
 
-  const armReadyFallback = () => {
-    if (readyTimerRef.current) clearTimeout(readyTimerRef.current);
-    readyTimerRef.current = setTimeout(() => {
-      setIsReady(true);
-    }, 3000);
-  };
-
-  const loadSong = (index: number, songList: any[]) => {
-    const song = songList[index];
+  const loadSong = useCallback((index: number) => {
+    const song = shuffledRef.current[index];
     if (!song || !widgetRef.current) return;
+    currentIndexRef.current = index;
+    setCurrentIndex(index);
     setPosition(0);
     setDuration(0);
     setArtworkUrl(null);
     widgetRef.current.load(song.soundcloudUrl, { auto_play: true });
-  };
+  }, []);
 
-  const goToNext = () => {
-    const nextIndex = (currentIndex + 1) % shuffled.length;
-    setCurrentIndex(nextIndex);
-    loadSong(nextIndex, shuffled);
-  };
+  const goToNext = useCallback(() => {
+    const next = (currentIndexRef.current + 1) % shuffledRef.current.length;
+    loadSong(next);
+  }, [loadSong]);
 
-  const goToPrev = () => {
-    const prevIndex = (currentIndex - 1 + shuffled.length) % shuffled.length;
-    setCurrentIndex(prevIndex);
-    loadSong(prevIndex, shuffled);
-  };
+  const goToPrev = useCallback(() => {
+    const prev = (currentIndexRef.current - 1 + shuffledRef.current.length) % shuffledRef.current.length;
+    loadSong(prev);
+  }, [loadSong]);
 
   useEffect(() => {
     if (scriptStatus !== "ready" || !currentSong || !iframeRef.current || initializedRef.current) return;
 
-    try {
-      const widget = window.SC.Widget(iframeRef.current);
-      widgetRef.current = widget;
-      initializedRef.current = true;
+    const widget = window.SC.Widget(iframeRef.current);
+    widgetRef.current = widget;
+    initializedRef.current = true;
 
-      widget.bind(window.SC.Widget.Events.READY, () => {
-        if (readyTimerRef.current) clearTimeout(readyTimerRef.current);
-        setIsReady(true);
-        widget.setVolume(80);
-        widget.play();
-        widget.getCurrentSound((soundInfo: any) => {
-          if (soundInfo?.artwork_url) {
-            setArtworkUrl(soundInfo.artwork_url.replace("-large", "-t200x200"));
-          }
-        });
-      });
-
-      widget.bind(window.SC.Widget.Events.PLAY, () => {
-        if (readyTimerRef.current) clearTimeout(readyTimerRef.current);
-        setIsReady(true);
-        setIsPlaying(true);
-        widget.getCurrentSound((soundInfo: any) => {
-          if (soundInfo?.artwork_url) {
-            setArtworkUrl(soundInfo.artwork_url.replace("-large", "-t200x200"));
-          }
-        });
-      });
-
-      widget.bind(window.SC.Widget.Events.PAUSE, () => setIsPlaying(false));
-
-      widget.bind(window.SC.Widget.Events.FINISH, () => {
-        setIsPlaying(false);
-        setPosition(0);
-        setShuffled((prev) => {
-          const nextIndex = (currentIndex + 1) % prev.length;
-          setCurrentIndex(nextIndex);
-          loadSong(nextIndex, prev);
-          return prev;
-        });
-      });
-
-      widget.bind(window.SC.Widget.Events.PLAY_PROGRESS, (e: any) => {
-        setPosition(e.currentPosition);
-        if (e.relativePosition > 0) {
-          setDuration(e.currentPosition / e.relativePosition);
+    widget.bind(window.SC.Widget.Events.READY, () => {
+      setWidgetReady(true);
+      widget.setVolume(80);
+      widget.play();
+      widget.getCurrentSound((soundInfo: any) => {
+        if (soundInfo?.artwork_url) {
+          setArtworkUrl(soundInfo.artwork_url.replace("-large", "-t200x200"));
         }
       });
-    } catch (err) {
-      console.error("Error initializing SoundCloud widget:", err);
-    }
+    });
 
-    return () => {
-      if (readyTimerRef.current) clearTimeout(readyTimerRef.current);
-    };
-  }, [scriptStatus, currentSong]);
+    widget.bind(window.SC.Widget.Events.PLAY, () => {
+      setWidgetReady(true);
+      setIsPlaying(true);
+      widget.getCurrentSound((soundInfo: any) => {
+        if (soundInfo?.artwork_url) {
+          setArtworkUrl(soundInfo.artwork_url.replace("-large", "-t200x200"));
+        }
+      });
+    });
+
+    widget.bind(window.SC.Widget.Events.PAUSE, () => setIsPlaying(false));
+
+    widget.bind(window.SC.Widget.Events.FINISH, () => {
+      setIsPlaying(false);
+      setPosition(0);
+      const next = (currentIndexRef.current + 1) % shuffledRef.current.length;
+      loadSong(next);
+    });
+
+    widget.bind(window.SC.Widget.Events.PLAY_PROGRESS, (e: any) => {
+      setPosition(e.currentPosition);
+      if (e.relativePosition > 0) {
+        setDuration(e.currentPosition / e.relativePosition);
+      }
+    });
+  }, [scriptStatus, currentSong, loadSong]);
 
   const togglePlay = () => {
-    if (!widgetRef.current || !isReady) return;
-    isPlaying ? widgetRef.current.pause() : widgetRef.current.play();
+    if (!widgetRef.current) return;
+    if (isPlaying) {
+      widgetRef.current.pause();
+    } else {
+      widgetRef.current.play();
+    }
   };
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!widgetRef.current || !isReady) return;
+    if (!widgetRef.current) return;
     const newPos = Number(e.target.value);
     widgetRef.current.seekTo(newPos);
     setPosition(newPos);
@@ -188,7 +174,6 @@ export function MusicPlayer() {
               max={duration || 100}
               value={position}
               onChange={handleSeek}
-              disabled={!isReady}
               className="player-seek"
               style={{ "--seek-pct": `${progressPct}%` } as React.CSSProperties}
               aria-label="Seek"
@@ -208,7 +193,7 @@ export function MusicPlayer() {
 
             <button
               onClick={togglePlay}
-              disabled={!isReady}
+              disabled={!widgetReady}
               className="w-[52px] h-[52px] rounded-full bg-gradient-to-br from-[#9333ea] to-[#a855f7] flex items-center justify-center text-white flex-shrink-0 transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(147,51,234,0.6),0_0_40px_rgba(168,85,247,0.25)] hover:shadow-[0_0_30px_rgba(147,51,234,0.9),0_0_60px_rgba(168,85,247,0.4)]"
               aria-label={isPlaying ? "Pause" : "Play"}
             >
@@ -225,7 +210,7 @@ export function MusicPlayer() {
             </button>
           </div>
 
-          {!isReady && (
+          {!widgetReady && (
             <p className="text-[0.7rem] text-[#d8b4fe]/50 text-center italic animate-blink mt-1">connecting player...</p>
           )}
         </>
